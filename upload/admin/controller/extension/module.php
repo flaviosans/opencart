@@ -29,7 +29,7 @@ class Module extends \Opencart\System\Engine\Controller {
 			$this->model_user_user_group->addPermission($this->user->getGroupId(), 'modify', 'extension/' . $this->request->get['extension'] . '/module/' . $this->request->get['code']);
 
 			// Call install method if it exists
-			$this->load->controller('extension/' . $this->request->get['extension'] . '/module/' . $this->request->get['code'] . '/install');
+			$this->load->controller('extension/' . $this->request->get['extension'] . '/module/' . $this->request->get['code'] . '|install');
 
 			$this->session->data['success'] = $this->language->get('text_success');
 		} else {
@@ -52,7 +52,7 @@ class Module extends \Opencart\System\Engine\Controller {
 			$this->model_setting_module->deleteModulesByCode($this->request->get['code']);
 
 			// Call uninstall method if it exists
-			$this->load->controller('extension/' . $this->request->get['extension'] . '/module/' . $this->request->get['code'] . '/uninstall');
+			$this->load->controller('extension/' . $this->request->get['extension'] . '/module/' . $this->request->get['code'] . '|uninstall');
 
 			$this->session->data['success'] = $this->language->get('text_success');
 		}
@@ -79,7 +79,7 @@ class Module extends \Opencart\System\Engine\Controller {
 	}
 
 	public function delete() {
-
+		$this->load->language('extension/module');
 
 		$this->load->model('setting/extension');
 
@@ -95,6 +95,8 @@ class Module extends \Opencart\System\Engine\Controller {
 	}
 
 	public function getList() {
+		$this->load->language('extension/module');
+
 		$data['text_layout'] = sprintf($this->language->get('text_layout'), $this->url->link('design/layout', 'user_token=' . $this->session->data['user_token']));
 
 		if (isset($this->error['warning'])) {
@@ -185,7 +187,7 @@ class Module extends \Opencart\System\Engine\Controller {
 
 		$data['promotion'] = $this->load->controller('extension/promotion');
 
-		return $this->load->view('marketplace/module', $data);
+		return $this->load->view('extension/module', $data);
 	}
 
 	protected function validate() {

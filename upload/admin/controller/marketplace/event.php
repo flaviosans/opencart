@@ -113,9 +113,9 @@ class Event extends \Opencart\System\Engine\Controller {
 				'code'       => $result['code'],
 				'trigger'    => $result['trigger'],
 				'action'     => $result['action'],
-				'sort_order' => $result['sort_order'],
 				'status'     => $result['status'] ? $this->language->get('text_enabled') : $this->language->get('text_disabled'),
-				'enabled'    => $result['status']
+				'enabled'    => $result['status'],
+				'sort_order' => $result['sort_order']
 			];
 		}
 
@@ -154,8 +154,8 @@ class Event extends \Opencart\System\Engine\Controller {
 		}
 
 		$data['sort_code'] = $this->url->link('marketplace/event', 'user_token=' . $this->session->data['user_token'] . '&sort=code' . $url);
-		$data['sort_sort_order'] = $this->url->link('marketplace/event', 'user_token=' . $this->session->data['user_token'] . '&sort=sort_order' . $url);
 		$data['sort_status'] = $this->url->link('marketplace/event', 'user_token=' . $this->session->data['user_token'] . '&sort=status' . $url);
+		$data['sort_sort_order'] = $this->url->link('marketplace/event', 'user_token=' . $this->session->data['user_token'] . '&sort=sort_order' . $url);
 
 		$url = '';
 
