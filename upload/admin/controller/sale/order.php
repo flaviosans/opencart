@@ -602,7 +602,7 @@ class Order extends \Opencart\System\Engine\Controller {
 
 			$data['order_status_id'] = $this->config->get('config_order_status_id');
 			$data['comment'] = '';
-			$data['affiliate_id'] = '';
+			$data['affiliate_id'] = 0;
 			$data['affiliate'] = '';
 			$data['currency_code'] = $this->config->get('config_currency');
 
@@ -775,9 +775,9 @@ class Order extends \Opencart\System\Engine\Controller {
 			$data['breadcrumbs'] = [];
 
 			$data['breadcrumbs'][] = [
-			'text' => $this->language->get('text_home'),
-			'href' => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'])
-		];
+				'text' => $this->language->get('text_home'),
+				'href' => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'])
+			];
 
 			$data['breadcrumbs'][] = [
 				'text' => $this->language->get('heading_title'),

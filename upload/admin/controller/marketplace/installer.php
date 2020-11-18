@@ -26,33 +26,6 @@ class Installer extends \Opencart\System\Engine\Controller {
 			$data['filter_extension_download_id'] = '';
 		}
 
-		/*
-		// Code to grab pre installed extensions
-		$extensions = $this->model_setting_extension->getDownloaded('analytics');
-
-		$curl = curl_init(OPENCART_SERVER . 'index.php?route=api/core&version=' . VERSION);
-
-		curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
-		curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-		curl_setopt($curl, CURLOPT_FOLLOWLOCATION, 1);
-		curl_setopt($curl, CURLOPT_FORBID_REUSE, 1);
-		curl_setopt($curl, CURLOPT_FRESH_CONNECT, 1);
-		curl_setopt($curl, CURLOPT_POST, 1);
-
-		$response = curl_exec($curl);
-
-		curl_close($curl);
-
-		$response_info = json_decode($response, true);
-
-		foreach ($response_info['extension'] as $extension) {
-			$this->model_setting_extension->addExtension($extension, '');
-		}
-
-		echo VERSION . "\n";
-		echo $response;
-		*/
-
 		$data['header'] = $this->load->controller('common/header');
 		$data['column_left'] = $this->load->controller('common/column_left');
 		$data['footer'] = $this->load->controller('common/footer');
@@ -141,7 +114,7 @@ class Installer extends \Opencart\System\Engine\Controller {
 
 		$data['sort_name'] = $this->url->link('marketplace/installer|extension', 'user_token=' . $this->session->data['user_token'] . '&sort=name' . $url);
 		$data['sort_version'] = $this->url->link('marketplace/installer|extension', 'user_token=' . $this->session->data['user_token'] . '&sort=version' . $url);
-		$data['sort_date_added'] = $this->url->link('marketplace/installer|extension', 'user_token=' . $this->session->data['user_token'] . '&sort=sort_date_added' . $url);
+		$data['sort_date_added'] = $this->url->link('marketplace/installer|extension', 'user_token=' . $this->session->data['user_token'] . '&sort=date_added' . $url);
 
 		$data['pagination'] = $this->load->controller('common/pagination', [
 			'total' => $extension_total,
@@ -257,7 +230,7 @@ class Installer extends \Opencart\System\Engine\Controller {
 					}
 				}
 
-				$json['success'] = $this->language->get('text_success');
+				$json['success'] = $this->language->get('text_upload');
 			} else {
 				$json['error'] = sprintf($this->language->get('error_file'), $filename);
 			}
@@ -314,7 +287,13 @@ class Installer extends \Opencart\System\Engine\Controller {
 					$source = $zip->getNameIndex($i);
 
 					// Only extract the contents of the upload folder
-					$destination = str_replace('\\', '/', substr($source, strlen('upload/')));
+					if (substr($source, 0, strlen($extension_install_info['code'])) == $extension_install_info['code']) {
+						$remove = strlen($extension_install_info['code'] . '/upload/');
+					} else {
+						$remove = strlen('upload/');
+					}
+
+					$destination = str_replace('\\', '/', substr($source, $remove));
 
 					$path = '';
 					$base = '';
@@ -333,39 +312,54 @@ class Installer extends \Opencart\System\Engine\Controller {
 
 					// image > image
 					if (substr($destination, 0, 6) == 'image/') {
-						$path = substr($destination, 6);
-						$base = DIR_IMAGE;
+						$path = $destination;
+						$base = substr(DIR_IMAGE, 0, -6);
 					}
 
-					if (substr($destination, 0, 7) == 'system/') {
+					// Add the system directory if it doesn't exist.
+					if ($destination == 'system/') {
 						$path = $extension_install_info['code'] . '/' . $destination;
 						$base = DIR_EXTENSION;
 					}
 
-					// system/config > system/config
+					// Config
 					if (substr($destination, 0, 14) == 'system/config/') {
-						$path = substr($destination, 14);
-						$base = DIR_CONFIG;
+						$path = $extension_install_info['code'] . '/' . $destination;
+						$base = DIR_EXTENSION;
 					}
 
-					// system/storage/vendor > system/storage/vendor
+					// Helper
+					if (substr($destination, 0, 14) == 'system/helper/') {
+						$path = $extension_install_info['code'] . '/' . $destination;
+						$base = DIR_EXTENSION;
+					}
+
+					// Library
+					if (substr($destination, 0, 15) == 'system/library/') {
+						$path = $extension_install_info['code'] . '/' . $destination;
+						$base = DIR_EXTENSION;
+					}
+
+					// We need to store the path differently for vendor folders.
 					if (substr($destination, 0, 22) == 'system/storage/vendor/') {
-						$path = substr($destination, 22);
-						$base = DIR_STORAGE . 'vendor/';
+						$path = substr($destination, 15);
+						$base = DIR_STORAGE;
 					}
 
 					if ($path) {
-						if (!is_file($base . $path)) {
+						if (substr($path, -1) != '/' && is_file($base . $path)) {
+							$json['error'] = sprintf($this->language->get('error_exists'), $destination);
+
+							break;
+						}
+
+						if (!is_dir($base . $path)) {
 							$extract[] = [
 								'source'      => $source,
 								'destination' => $destination,
 								'base'        => $base,
 								'path'        => $path
 							];
-						} else {
-							$json['error'] = sprintf($this->language->get('error_exists'), $destination);
-
-							break;
 						}
 					}
 				}
@@ -394,7 +388,7 @@ class Installer extends \Opencart\System\Engine\Controller {
 
 			$this->model_setting_extension->editStatus($extension_install_id, 1);
 
-			$json['success'] = $this->language->get('text_success');
+			$json['success'] = $this->language->get('text_install');
 		}
 
 		$this->response->addHeader('Content-Type: application/json');
@@ -432,24 +426,19 @@ class Installer extends \Opencart\System\Engine\Controller {
 			foreach ($results as $result) {
 				$path = '';
 
-				// admin > extension/{directory}/admin
+				// Remove extension directory and files
 				if (substr($result['path'], 0, strlen($extension_install_info['code'])) == $extension_install_info['code']) {
 					$path = DIR_EXTENSION . $result['path'];
 				}
 
-				// Image
+				// Remove images
 				if (substr($result['path'], 0, 6) == 'image/') {
 					$path = DIR_IMAGE . substr($result['path'], 6);
 				}
 
-				// Config
-				if (substr($result['path'], 0, 14) == 'system/config/') {
-					$path = DIR_CONFIG . substr($result['path'], 14);
-				}
-
-				// Storage
-				if (substr($result['path'], 0, 22) == 'system/storage/vendor/') {
-					$path = DIR_STORAGE . 'vendor/' . substr($result['path'], 22);
+				// Remove vendor files
+				if (substr($result['path'], 0, 7) == 'vendor/') {
+					$path = DIR_STORAGE . $result['path'];
 				}
 
 				// Check if the location exists or not
@@ -467,7 +456,7 @@ class Installer extends \Opencart\System\Engine\Controller {
 
 			$this->model_setting_extension->editStatus($extension_install_id, 0);
 
-			$json['success'] = $this->language->get('text_success');
+			$json['success'] = $this->language->get('text_uninstall');
 		}
 
 		$this->response->addHeader('Content-Type: application/json');
@@ -507,7 +496,7 @@ class Installer extends \Opencart\System\Engine\Controller {
 
 			$this->model_setting_extension->deleteInstall($extension_install_id);
 
-			$json['success'] = $this->language->get('text_success');
+			$json['success'] = $this->language->get('text_delete');
 		}
 
 		$this->response->addHeader('Content-Type: application/json');

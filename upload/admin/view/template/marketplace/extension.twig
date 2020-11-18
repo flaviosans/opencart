@@ -64,13 +64,14 @@ $('select[name=\'type\']').on('change', function() {
 	});
 });
 
-$('#extension').on('click', '.btn-info', function(e) {
+// Download promotion extension
+$('#extension').on('click', '#recommended .btn-primary', function(e) {
 	e.preventDefault();
 
 	var element = this;
 
 	$.ajax({
-		url: $(element).attr('href'),
+		url: $(element).attr('value'),
 		dataType: 'json',
 		beforeSend: function() {
 			$(element).button('loading');
@@ -81,9 +82,6 @@ $('#extension').on('click', '.btn-info', function(e) {
 		success: function(json) {
 			$('.alert-dismissible').remove();
 
-			console.log(json);
-
-
 			if (json['error']) {
 				$('#extension').before('<div class="alert alert-danger alert-dismissible"><i class="fas fa-exclamation-circle"></i> ' + json['error'] + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div></div>');
 			}
@@ -91,7 +89,16 @@ $('#extension').on('click', '.btn-info', function(e) {
 			if (json['success']) {
 				$('#extension').before('<div class="alert alert-success alert-dismissible"><i class="fas fa-check-circle"></i> ' + json['success'] + '  <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
 
-				$('#extension').load('index.php?route=marketplace/marketplace|extension&user_token={{ user_token }}&extension_id={{ extension_id }}');
+				$(element).prop('disabled', true);
+
+				// Manually build the url so no need to refresh extensions and can trigger install
+				html = '<a href="index.php?route=marketplace/installer|install&user_token={{ user_token }}&extension_install_id=' + json['extension_install_id'] + '" class="dropdown-item"><i class="fa fa-plus-circle fa-fw"></i> {{ text_install }}</a>';
+				html += '<a href="index.php?route=marketplace/installer|delete&user_token={{ user_token }}&extension_install_id=' + json['extension_install_id'] + '" class="dropdown-item"><i class="far fa-trash-alt fa-fw"></i> {{ text_delete }}</a>';
+
+				// Once the extension is downloaded we trigger the install
+				$(element).parent().find('.dropdown-menu').html(html);
+
+				$(element).parent().find('.dropdown-item:first').trigger('click');
 			}
 		},
 		error: function(xhr, ajaxOptions, thrownError) {
@@ -100,6 +107,35 @@ $('#extension').on('click', '.btn-info', function(e) {
 	});
 });
 
+// Download dropdown
+$('#extension').on('click', '.dropdown-item', function(e) {
+	e.preventDefault();
+
+	var element = this;
+
+	$.ajax({
+		url: $(element).attr('href'),
+		dataType: 'json',
+		success: function(json) {
+			$('.alert-dismissible').remove();
+
+			if (json['error']) {
+				$('#extension').before('<div class="alert alert-danger alert-dismissible"><i class="fas fa-exclamation-circle"></i> ' + json['error'] + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div></div>');
+			}
+
+			if (json['success']) {
+				$('#extension').before('<div class="alert alert-success alert-dismissible"><i class="fas fa-check-circle"></i> ' + json['success'] + '  <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+
+				$('#extension').load($('select[name=\'type\']').val());
+			}
+		},
+		error: function(xhr, ajaxOptions, thrownError) {
+			alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+		}
+	});
+});
+
+// Install
 $('#extension').on('click', '.btn-success', function(e) {
 	e.preventDefault();
 
@@ -123,6 +159,7 @@ $('#extension').on('click', '.btn-success', function(e) {
 	});
 });
 
+// Uninstall / Delete
 $('#extension').on('click', '.btn-danger, .btn-warning', function(e) {
 	e.preventDefault();
 
